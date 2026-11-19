@@ -7,7 +7,7 @@ def conectar():
         host="localhost",
         user="root",
         password="",
-        database="crud",
+        database="302",
     )
 
 # GUARDAR GRUPO (CREATE)
