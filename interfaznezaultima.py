@@ -125,6 +125,129 @@ FUENTE_TEXTO = "Arial"
 ANCHO_INICIAL = 1050
 ALTO_INICIAL = 760
 
+ventana = tk.Tk()
+ventana.title("SAT NEZA HQX - Sistema de Control Escolar")
+ventana.geometry(f"{ANCHO_INICIAL}x{ALTO_INICIAL}")
+ventana.minsize(640, 480)
+ventana.configure(bg=COLOR_FONDO)
+
+# En Windows abre maximizada; en otros sistemas usa casi toda la pantalla.
+try:
+    ventana.state("zoomed")
+except tk.TclError:
+    ancho = ventana.winfo_screenwidth()
+    alto = ventana.winfo_screenheight()
+    ventana.geometry(f"{int(ancho * 0.92)}x{int(alto * 0.88)}")
+
+
+def crear_contenedor_con_scroll(parent, color_fondo=COLOR_FONDO):
+    """Crea un contenedor vertical desplazable que se adapta al tamaño de la ventana."""
+    canvas = tk.Canvas(parent, bg=color_fondo, highlightthickness=0)
+    scrollbar = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="both", expand=True)
+
+    marco = tk.Frame(canvas, bg=color_fondo)
+    ventana_canvas = canvas.create_window((0, 0), window=marco, anchor="nw")
+
+    def actualizar_ancho(evento):
+        canvas.itemconfigure(ventana_canvas, width=evento.width)
+
+    def actualizar_scroll(_evento=None):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+
+    def desplazar(evento):
+        canvas.yview_scroll(-1 if evento.delta > 0 else 1, "units")
+
+    canvas.bind("<Configure>", actualizar_ancho)
+    marco.bind("<Configure>", actualizar_scroll)
+    canvas.bind_all("<MouseWheel>", desplazar)
+    return marco
+
+
+def crear_hash(clave):
+    """Protege una contraseña nueva sin cambiar la estructura de MySQL."""
+    sal = secrets.token_hex(16)
+    rondas = 200000
+    resultado = hashlib.pbkdf2_hmac("sha256", clave.encode("utf-8"), sal.encode("utf-8"), rondas).hex()
+    return f"pbkdf2${rondas}${sal}${resultado}"
+
+
+def comprobar_clave(clave, guardada):
+    """Acepta cuentas antiguas y las nuevas contraseñas protegidas."""
+    if guardada.startswith("pbkdf2$"):
+        try:
+            _, rondas, sal, esperado = guardada.split("$", 3)
+            calculado = hashlib.pbkdf2_hmac("sha256", clave.encode("utf-8"), sal.encode("utf-8"), int(rondas)).hex()
+            return hmac.compare_digest(calculado, esperado)
+        except (ValueError, TypeError):
+            return False
+    return hmac.compare_digest(clave, guardada)
+
+
+def limpiar_ventana():
+    """Elimina los widgets de la vista actual antes de abrir otra."""
+    for widget in ventana.winfo_children():
+        widget.destroy()
+
+
+def crear_boton(parent, texto, comando, color=COLOR_AZUL):
+    """Crea botones con el estilo general y tamaño adaptable."""
+    return tk.Button(
+        parent,
+        text=texto,
+        command=comando,
+        bg=color,
+        fg="white",
+        activebackground=COLOR_DORADO,
+        activeforeground="white",
+        font=(FUENTE_TEXTO, 11, "bold"),
+        relief="flat",
+        padx=10,
+        pady=7,
+        cursor="hand2"
+    )
+
+
+def crear_titulo(parent, texto, color_fondo=COLOR_FONDO):
+    """Muestra un título centrado."""
+    return tk.Label(
+        parent,
+        text=texto,
+        font=(FUENTE_TITULO, 20, "bold"),
+        bg=color_fondo,
+        fg="white"
+    )
+
+
+def crear_etiqueta(parent, texto, tamano=11, color_fondo=COLOR_FONDO,
+                   color_texto="white", negrita=False):
+    """Crea una etiqueta de texto con el estilo general."""
+    estilo = "bold" if negrita else "normal"
+    return tk.Label(
+        parent,
+        text=texto,
+        font=(FUENTE_TEXTO, tamano, estilo),
+        bg=color_fondo,
+        fg=color_texto
+    )
+
+
+def crear_campo(parent, ancho=30, ocultar=False):
+    """Crea un campo de entrada adaptable."""
+    campo = tk.Entry(
+        parent,
+        width=ancho,
+        font=(FUENTE_TEXTO, 12),
+        relief="solid",
+        bd=1
+    )
+    if ocultar:
+        campo.configure(show="*")
+    return campo
+
+
 def crear_alumno(nombre):
     """Devuelve la estructura inicial para un alumno nuevo."""
     return {
@@ -309,83 +432,6 @@ def importar_alumnos_csv():
     except (OSError, csv.Error, UnicodeError) as error:
         messagebox.showerror("Error al importar", str(error))
 
-ventana = tk.Tk()
-ventana.title("SAT NEZA HQX - Sistema de Control Escolar")
-ventana.geometry("1250x850")
-ventana.minsize(850, 620)
-ventana.configure(bg=COLOR_FONDO)
-
-# En Windows abre maximizada; en otros sistemas usa casi toda la pantalla.
-try:
-    ventana.state("zoomed")
-except tk.TclError:
-    ancho = ventana.winfo_screenwidth()
-    alto = ventana.winfo_screenheight()
-    ventana.geometry(f"{int(ancho * 0.92)}x{int(alto * 0.88)}")
-
-
-def limpiar_ventana():
-    """Elimina los widgets de la vista actual antes de abrir otra."""
-    for widget in ventana.winfo_children():
-        widget.destroy()
-
-
-def crear_boton(parent, texto, comando, color=COLOR_AZUL):
-    """Crea botones con el mismo estilo para todas las pantallas."""
-    return tk.Button(
-        parent,
-        text=texto,
-        command=comando,
-        bg=color,
-        fg="white",
-        activebackground=COLOR_DORADO,
-        activeforeground="white",
-        font=(FUENTE_TITULO, 12, "bold"),
-        relief="flat",
-        padx=12,
-        pady=7,
-        cursor="hand2"
-    )
-
-
-def crear_titulo(parent, texto, color_fondo=COLOR_FONDO):
-    """Muestra un título centrado."""
-    return tk.Label(
-        parent,
-        text=texto,
-        font=(FUENTE_TITULO, 20, "bold"),
-        bg=color_fondo,
-        fg="white"
-    )
-
-
-def crear_etiqueta(parent, texto, tamano=11, color_fondo=COLOR_FONDO,
-                   color_texto="white", negrita=False):
-    """Crea una etiqueta de texto con el estilo general."""
-    estilo = "bold" if negrita else "normal"
-    return tk.Label(
-        parent,
-        text=texto,
-        font=(FUENTE_TEXTO, tamano, estilo),
-        bg=color_fondo,
-        fg=color_texto
-    )
-
-
-def crear_campo(parent, ancho=30, ocultar=False):
-    """Crea un campo de entrada."""
-    campo = tk.Entry(
-        parent,
-        width=ancho,
-        font=(FUENTE_TEXTO, 12),
-        relief="solid",
-        bd=1
-    )
-    if ocultar:
-        campo.configure(show="*")
-    return campo
-
-
 def mostrar_encabezado(titulo, rol):
     """Barra superior reutilizada en las pantallas internas."""
     barra = tk.Frame(ventana, bg=COLOR_AZUL, padx=15, pady=10)
@@ -468,192 +514,33 @@ def mostrar_selector_grupo(parent, funcion_cambio=None):
 
 
 def mostrar_lista(parent, altura=10):
-    """Crea una lista con el estilo usado en las pantallas."""
+    """Crea una lista adaptable con barras de desplazamiento."""
+    contenedor = tk.Frame(parent, bg=COLOR_FONDO)
+    contenedor.pack(fill="both", expand=True, padx=12, pady=8)
+
     lista = tk.Listbox(
-        parent,
+        contenedor,
         height=altura,
         font=(FUENTE_TEXTO, 11),
         bg=COLOR_PANEL,
         fg=COLOR_TEXTO,
         selectbackground=COLOR_AZUL,
         selectforeground="white",
-        relief="flat"
+        relief="flat",
+        xscrollcommand=None,
+        yscrollcommand=None
     )
-    lista.pack(fill="both", expand=True, padx=12, pady=8)
+
+    scrollbar_vertical = tk.Scrollbar(contenedor, orient="vertical", command=lista.yview)
+    scrollbar_horizontal = tk.Scrollbar(contenedor, orient="horizontal", command=lista.xview)
+    lista.configure(yscrollcommand=scrollbar_vertical.set, xscrollcommand=scrollbar_horizontal.set)
+
+    lista.grid(row=0, column=0, sticky="nsew")
+    scrollbar_vertical.grid(row=0, column=1, sticky="ns")
+    scrollbar_horizontal.grid(row=1, column=0, sticky="ew")
+    contenedor.grid_rowconfigure(0, weight=1)
+    contenedor.grid_columnconfigure(0, weight=1)
     return lista
-
-def crear_hash(clave):
-    """Protege una contraseña nueva sin cambiar la estructura de MySQL."""
-    sal = secrets.token_hex(16)
-    rondas = 200000
-    resultado = hashlib.pbkdf2_hmac("sha256", clave.encode("utf-8"), sal.encode("utf-8"), rondas).hex()
-    return f"pbkdf2${rondas}${sal}${resultado}"
-
-
-def comprobar_clave(clave, guardada):
-    """Acepta cuentas antiguas y las nuevas contraseñas protegidas."""
-    if guardada.startswith("pbkdf2$"):
-        try:
-            _, rondas, sal, esperado = guardada.split("$", 3)
-            calculado = hashlib.pbkdf2_hmac("sha256", clave.encode("utf-8"), sal.encode("utf-8"), int(rondas)).hex()
-            return hmac.compare_digest(calculado, esperado)
-        except (ValueError, TypeError):
-            return False
-    return hmac.compare_digest(clave, guardada)
-
-
-def mostrar_registro():
-    """Permite registrar una cuenta de directivo o profesor."""
-    limpiar_ventana()
-    ventana.configure(bg=COLOR_FONDO)
-
-    contenedor = tk.Frame(ventana, bg=COLOR_FONDO)
-    contenedor.pack(fill="both", expand=True)
-
-    tk.Label(contenedor, text="CREAR CUENTA", font=(FUENTE_TITULO, 30, "bold"),
-             fg="white", bg=COLOR_FONDO).pack(pady=(25, 12))
-
-    tarjeta = tk.Frame(contenedor, bg=COLOR_PANEL, padx=45, pady=28,
-                       highlightbackground=COLOR_DORADO, highlightthickness=2)
-    tarjeta.pack(padx=20, pady=10)
-
-    tk.Label(tarjeta, text="Registro de usuario", font=(FUENTE_TITULO, 23, "bold"),
-             fg=COLOR_AZUL, bg=COLOR_PANEL).pack(pady=(0, 18))
-
-    campos = {}
-    for etiqueta, clave in (("Nombre", "nombre"), ("Apellido", "apellido"), ("Nombre de usuario", "usuario"), ("Contraseña", "clave"), ("Confirmar contraseña", "confirmar")):
-        tk.Label(tarjeta, text=etiqueta, font=(FUENTE_TEXTO, 12, "bold"),
-                 fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w", pady=(7, 2))
-        campos[clave] = crear_campo(tarjeta, ancho=38, ocultar=clave in ("clave", "confirmar"))
-        campos[clave].pack(fill="x", pady=(0, 4), ipady=5)
-
-    tk.Label(tarjeta, text="Tipo de cuenta", font=(FUENTE_TEXTO, 12, "bold"),
-             fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w", pady=(12, 4))
-    perfil = tk.StringVar(value="Profesor")
-    fila = tk.Frame(tarjeta, bg=COLOR_PANEL)
-    fila.pack(anchor="w")
-    for rol in ("Directivo", "Profesor"):
-        tk.Radiobutton(fila, text=rol, variable=perfil, value=rol, font=(FUENTE_TEXTO, 11),
-                       bg=COLOR_PANEL, fg=COLOR_TEXTO, activebackground=COLOR_PANEL).pack(side="left", padx=(0, 18))
-
-    def guardar_cuenta():
-        nombre = campos["nombre"].get().strip()
-        apellido = campos["apellido"].get().strip()
-        usuario = campos["usuario"].get().strip()
-        clave = campos["clave"].get()
-        confirmar = campos["confirmar"].get()
-        if not all((nombre, apellido, usuario, clave, confirmar)):
-            messagebox.showwarning("Registro", "Completa todos los campos.")
-            return
-        if len(usuario) < 4:
-            messagebox.showwarning("Registro", "El usuario debe tener al menos 4 caracteres.")
-            return
-        if len(clave) < 8:
-            messagebox.showwarning("Registro", "La contraseña debe tener al menos 8 caracteres.")
-            return
-        if clave != confirmar:
-            messagebox.showwarning("Registro", "Las contraseñas no coinciden.")
-            return
-        existe = ejecutar_sql("SELECT id_usuario FROM usuarios WHERE usuario=%s", (usuario,), True)
-        if existe is None:
-            return
-        if existe:
-            messagebox.showwarning("Registro", "Ese nombre de usuario ya está ocupado.")
-            return
-        id_usuario = ejecutar_sql(
-            "INSERT INTO usuarios (usuario, contrasena, rol, estado) VALUES (%s,%s,%s,'Activo')",
-            (usuario, crear_hash(clave), perfil.get())
-        )
-        if not id_usuario:
-            return
-        partes = [nombre, apellido]
-        if perfil.get() == "Directivo":
-            ejecutar_sql("INSERT INTO directores (id_usuario, nombre, apellido) VALUES (%s,%s,%s)",
-                         (id_usuario, partes[0], partes[1]))
-        else:
-            ejecutar_sql("INSERT INTO docentes (id_usuario, nombre, apellido, id_grupo) VALUES (%s,%s,%s,NULL)",
-                         (id_usuario, partes[0], partes[1]))
-        messagebox.showinfo("Cuenta creada", "Tu cuenta se creó correctamente. Ya puedes iniciar sesión.")
-        mostrar_login()
-
-    crear_boton(tarjeta, "Crear cuenta", guardar_cuenta, COLOR_VERDE).pack(fill="x", pady=(20, 7), ipady=5)
-    crear_boton(tarjeta, "Volver al inicio de sesión", mostrar_login, COLOR_AZUL_OSCURO).pack(fill="x", ipady=5)
-    tk.Label(contenedor, text="SAT NEZA HQX  •  CONTROL ESCOLAR", font=(FUENTE_TEXTO, 10, "bold"),
-             fg=COLOR_DORADO, bg=COLOR_FONDO).pack(pady=12)
-
-
-def mostrar_login():
-    """Pantalla inicial ampliada y centrada para iniciar sesión."""
-    limpiar_ventana()
-    ventana.configure(bg=COLOR_FONDO)
-
-    contenedor = tk.Frame(ventana, bg=COLOR_FONDO)
-    contenedor.pack(fill="both", expand=True)
-
-    tk.Label(contenedor, text="SAT NEZA HQX", font=(FUENTE_TITULO, 34, "bold"),
-             fg="white", bg=COLOR_FONDO).pack(pady=(35, 5))
-    tk.Label(contenedor, text="SISTEMA DE CONTROL ESCOLAR", font=(FUENTE_TEXTO, 15, "bold"),
-             fg=COLOR_DORADO, bg=COLOR_FONDO).pack(pady=(0, 18))
-    tk.Label(contenedor, text="COMPROMETIDOS CON LA EDUCACIÓN Y EL FUTURO",
-             font=(FUENTE_TEXTO, 11), fg="#D5DFEA", bg=COLOR_FONDO).pack(pady=(0, 20))
-
-    tarjeta = tk.Frame(contenedor, bg=COLOR_PANEL, padx=55, pady=35,
-                       highlightbackground=COLOR_DORADO, highlightthickness=2)
-    tarjeta.pack(padx=20, pady=8)
-    tk.Label(tarjeta, text="Inicio de sesión", font=(FUENTE_TITULO, 27, "bold"),
-             fg=COLOR_AZUL, bg=COLOR_PANEL).pack(pady=(0, 5))
-    tk.Label(tarjeta, text="Ingresa tus datos para continuar", font=(FUENTE_TEXTO, 12),
-             fg=COLOR_SUAVE, bg=COLOR_PANEL).pack(pady=(0, 20))
-
-    tk.Label(tarjeta, text="Usuario", font=(FUENTE_TEXTO, 12, "bold"),
-             fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w")
-    entrada_usuario = crear_campo(tarjeta, ancho=38)
-    entrada_usuario.pack(fill="x", pady=(5, 14), ipady=6)
-    tk.Label(tarjeta, text="Contraseña", font=(FUENTE_TEXTO, 12, "bold"),
-             fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w")
-    entrada_clave = crear_campo(tarjeta, ancho=38, ocultar=True)
-    entrada_clave.pack(fill="x", pady=(5, 14), ipady=6)
-
-    tk.Label(tarjeta, text="Tipo de acceso", font=(FUENTE_TEXTO, 12, "bold"),
-             fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w", pady=(2, 5))
-    perfil = tk.StringVar(value="Directivo")
-    fila_perfiles = tk.Frame(tarjeta, bg=COLOR_PANEL)
-    fila_perfiles.pack(anchor="w")
-    for rol in ("Directivo", "Profesor"):
-        tk.Radiobutton(fila_perfiles, text=rol, variable=perfil, value=rol,
-                       font=(FUENTE_TEXTO, 11), bg=COLOR_PANEL, fg=COLOR_TEXTO,
-                       activebackground=COLOR_PANEL).pack(side="left", padx=(0, 20))
-
-    def revisar_acceso():
-        usuario = entrada_usuario.get().strip()
-        clave = entrada_clave.get()
-        if not usuario or not clave:
-            messagebox.showwarning("Inicio de sesión", "Escribe tu usuario y contraseña.")
-            return
-        usuario_bd = ejecutar_sql(
-            "SELECT id_usuario, usuario, contrasena, rol FROM usuarios WHERE usuario=%s AND estado='Activo'",
-            (usuario,), True
-        )
-        if not usuario_bd or not comprobar_clave(clave, usuario_bd[0]["contrasena"]):
-            messagebox.showerror("Acceso denegado", "El usuario o la contraseña son incorrectos.")
-            return
-        if usuario_bd[0]["rol"].lower() != perfil.get().lower():
-            messagebox.showwarning("Tipo de acceso", "El usuario no tiene permisos para ese perfil.")
-            return
-        # Si era una cuenta antigua en texto normal, se protege al iniciar sesión.
-        if not usuario_bd[0]["contrasena"].startswith("pbkdf2$"):
-            ejecutar_sql("UPDATE usuarios SET contrasena=%s WHERE id_usuario=%s",
-                         (crear_hash(clave), usuario_bd[0]["id_usuario"]))
-        if perfil.get() == "Directivo":
-            mostrar_director()
-        else:
-            mostrar_profesor()
-
-    crear_boton(tarjeta, "Ingresar", revisar_acceso, COLOR_AZUL_OSCURO).pack(fill="x", pady=(18, 8), ipady=7)
-    crear_boton(tarjeta, "Crear cuenta nueva", mostrar_registro, COLOR_VERDE).pack(fill="x", ipady=7)
-    tk.Label(contenedor, text="ASISTENCIA  •  RETARDOS  •  FALTAS  •  CONDUCTA",
-             font=(FUENTE_TEXTO, 10, "bold"), fg=COLOR_DORADO, bg=COLOR_FONDO).pack(pady=20)
-
 
 def contar_estado(alumno, estado):
     """Cuenta cuántas veces aparece un estado de asistencia."""
@@ -1426,7 +1313,7 @@ def vista_conducta_profesor():
              bg=COLOR_PANEL, fg=COLOR_TEXTO).pack(side="left")
     var_alumno, _ = crear_selector_alumno(fila1)
     # Lo movemos para que quede bien en la fila
-    # Si te queda raro, es porque crear_selector_alumno hace pack, lo dejamos así
+    # Si te queda raro, crear_selector_alumno hace pack, lo dejamos así
 
     tk.Label(fila1, text="Nivel:", font=(FUENTE_TEXTO, 11, "bold"),
              bg=COLOR_PANEL, fg=COLOR_TEXTO).pack(side="left", padx=(15, 5))
@@ -1470,6 +1357,151 @@ def vista_conducta_profesor():
             hay = True
     if not hay:
         lista.insert("end", "No hay reportes de conducta en este grupo.")
+
+def mostrar_registro():
+    """Permite registrar una cuenta de directivo o profesor."""
+    limpiar_ventana()
+    contenedor = crear_contenedor_con_scroll(ventana)
+
+    tk.Label(contenedor, text="CREAR CUENTA", font=(FUENTE_TITULO, 30, "bold"),
+             fg="white", bg=COLOR_FONDO).pack(pady=(25, 12))
+
+    tarjeta = tk.Frame(contenedor, bg=COLOR_PANEL, padx=35, pady=25,
+                       highlightbackground=COLOR_DORADO, highlightthickness=2)
+    tarjeta.pack(padx=20, pady=10)
+
+    tk.Label(tarjeta, text="Registro de usuario", font=(FUENTE_TITULO, 23, "bold"),
+             fg=COLOR_AZUL, bg=COLOR_PANEL).pack(pady=(0, 18))
+
+    campos = {}
+    for etiqueta, clave in (("Nombre", "nombre"), ("Apellido", "apellido"),
+                            ("Nombre de usuario", "usuario"), ("Contraseña", "clave"),
+                            ("Confirmar contraseña", "confirmar")):
+        tk.Label(tarjeta, text=etiqueta, font=(FUENTE_TEXTO, 12, "bold"),
+                 fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w", pady=(7, 2))
+        campos[clave] = crear_campo(tarjeta, ancho=38,
+                                   ocultar=clave in ("clave", "confirmar"))
+        campos[clave].pack(fill="x", pady=(0, 4), ipady=5)
+
+    tk.Label(tarjeta, text="Tipo de cuenta", font=(FUENTE_TEXTO, 12, "bold"),
+             fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w", pady=(12, 4))
+    perfil = tk.StringVar(value="Profesor")
+    fila = tk.Frame(tarjeta, bg=COLOR_PANEL)
+    fila.pack(anchor="w")
+    for rol in ("Directivo", "Profesor"):
+        tk.Radiobutton(fila, text=rol, variable=perfil, value=rol,
+                       font=(FUENTE_TEXTO, 11), bg=COLOR_PANEL,
+                       fg=COLOR_TEXTO, activebackground=COLOR_PANEL).pack(side="left", padx=(0, 18))
+
+    def guardar_cuenta():
+        nombre = campos["nombre"].get().strip()
+        apellido = campos["apellido"].get().strip()
+        usuario = campos["usuario"].get().strip()
+        clave = campos["clave"].get()
+        confirmar = campos["confirmar"].get()
+        if not all((nombre, apellido, usuario, clave, confirmar)):
+            messagebox.showwarning("Registro", "Completa todos los campos.")
+            return
+        if len(usuario) < 4:
+            messagebox.showwarning("Registro", "El usuario debe tener al menos 4 caracteres.")
+            return
+        if len(clave) < 8:
+            messagebox.showwarning("Registro", "La contraseña debe tener al menos 8 caracteres.")
+            return
+        if clave != confirmar:
+            messagebox.showwarning("Registro", "Las contraseñas no coinciden.")
+            return
+        existe = ejecutar_sql("SELECT id_usuario FROM usuarios WHERE usuario=%s", (usuario,), True)
+        if existe is None:
+            return
+        if existe:
+            messagebox.showwarning("Registro", "Ese nombre de usuario ya está ocupado.")
+            return
+        id_usuario = ejecutar_sql(
+            "INSERT INTO usuarios (usuario, contrasena, rol, estado) VALUES (%s,%s,%s,'Activo')",
+            (usuario, crear_hash(clave), perfil.get())
+        )
+        if not id_usuario:
+            return
+        if perfil.get() == "Directivo":
+            ejecutar_sql("INSERT INTO directores (id_usuario, nombre, apellido) VALUES (%s,%s,%s)",
+                         (id_usuario, nombre, apellido))
+        else:
+            ejecutar_sql("INSERT INTO docentes (id_usuario, nombre, apellido, id_grupo) VALUES (%s,%s,%s,NULL)",
+                         (id_usuario, nombre, apellido))
+        messagebox.showinfo("Cuenta creada", "Tu cuenta se creó correctamente. Ya puedes iniciar sesión.")
+        mostrar_login()
+
+    crear_boton(tarjeta, "Crear cuenta", guardar_cuenta, COLOR_VERDE).pack(fill="x", pady=(20, 7), ipady=5)
+    crear_boton(tarjeta, "Volver al inicio de sesión", mostrar_login, COLOR_AZUL_OSCURO).pack(fill="x", ipady=5)
+
+
+def mostrar_login():
+    """Muestra una pantalla inicial adaptable."""
+    limpiar_ventana()
+    contenedor = crear_contenedor_con_scroll(ventana)
+
+    tk.Label(contenedor, text="SAT NEZA HQX", font=(FUENTE_TITULO, 34, "bold"),
+             fg="white", bg=COLOR_FONDO).pack(pady=(25, 5))
+    tk.Label(contenedor, text="SISTEMA DE CONTROL ESCOLAR", font=(FUENTE_TEXTO, 15, "bold"),
+             fg=COLOR_DORADO, bg=COLOR_FONDO).pack(pady=(0, 15))
+
+    tarjeta = tk.Frame(contenedor, bg=COLOR_PANEL, padx=35, pady=25,
+                       highlightbackground=COLOR_DORADO, highlightthickness=2)
+    tarjeta.pack(padx=20, pady=8)
+
+    tk.Label(tarjeta, text="Inicio de sesión", font=(FUENTE_TITULO, 27, "bold"),
+             fg=COLOR_AZUL, bg=COLOR_PANEL).pack(pady=(0, 5))
+    tk.Label(tarjeta, text="Ingresa tus datos para continuar", font=(FUENTE_TEXTO, 12),
+             fg=COLOR_SUAVE, bg=COLOR_PANEL).pack(pady=(0, 20))
+
+    tk.Label(tarjeta, text="Usuario", font=(FUENTE_TEXTO, 12, "bold"),
+             fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w")
+    entrada_usuario = crear_campo(tarjeta, ancho=38)
+    entrada_usuario.pack(fill="x", pady=(5, 14), ipady=6)
+
+    tk.Label(tarjeta, text="Contraseña", font=(FUENTE_TEXTO, 12, "bold"),
+             fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w")
+    entrada_clave = crear_campo(tarjeta, ancho=38, ocultar=True)
+    entrada_clave.pack(fill="x", pady=(5, 14), ipady=6)
+
+    tk.Label(tarjeta, text="Tipo de acceso", font=(FUENTE_TEXTO, 12, "bold"),
+             fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w", pady=(2, 5))
+    perfil = tk.StringVar(value="Directivo")
+    fila_perfiles = tk.Frame(tarjeta, bg=COLOR_PANEL)
+    fila_perfiles.pack(anchor="w")
+    for rol in ("Directivo", "Profesor"):
+        tk.Radiobutton(fila_perfiles, text=rol, variable=perfil, value=rol,
+                       font=(FUENTE_TEXTO, 11), bg=COLOR_PANEL, fg=COLOR_TEXTO,
+                       activebackground=COLOR_PANEL).pack(side="left", padx=(0, 20))
+
+    def revisar_acceso():
+        usuario = entrada_usuario.get().strip()
+        clave = entrada_clave.get()
+        if not usuario or not clave:
+            messagebox.showwarning("Inicio de sesión", "Escribe tu usuario y contraseña.")
+            return
+        usuario_bd = ejecutar_sql(
+            "SELECT id_usuario, usuario, contrasena, rol FROM usuarios WHERE usuario=%s AND estado='Activo'",
+            (usuario,), True
+        )
+        if not usuario_bd or not comprobar_clave(clave, usuario_bd[0]["contrasena"]):
+            messagebox.showerror("Acceso denegado", "El usuario o la contraseña son incorrectos.")
+            return
+        if usuario_bd[0]["rol"].lower() != perfil.get().lower():
+            messagebox.showwarning("Tipo de acceso", "El usuario no tiene permisos para ese perfil.")
+            return
+        if not usuario_bd[0]["contrasena"].startswith("pbkdf2$"):
+            ejecutar_sql("UPDATE usuarios SET contrasena=%s WHERE id_usuario=%s",
+                         (crear_hash(clave), usuario_bd[0]["id_usuario"]))
+        if perfil.get() == "Directivo":
+            mostrar_director()
+        else:
+            mostrar_profesor()
+
+    crear_boton(tarjeta, "Ingresar", revisar_acceso, COLOR_AZUL_OSCURO).pack(fill="x", pady=(18, 8), ipady=7)
+    crear_boton(tarjeta, "Crear cuenta nueva", mostrar_registro, COLOR_VERDE).pack(fill="x", ipady=7)
+
 
 if __name__ == "__main__":
     if conectar_bd():
