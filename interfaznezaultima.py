@@ -131,6 +131,8 @@ ventana.geometry(f"{ANCHO_INICIAL}x{ALTO_INICIAL}")
 ventana.minsize(640, 480)
 ventana.configure(bg=COLOR_FONDO)
 
+#SERGIO HIZO MODIFICACIÓN DE LOGIN DE USUARIOS
+
 # En Windows abre maximizada; en otros sistemas usa casi toda la pantalla.
 try:
     ventana.state("zoomed")
