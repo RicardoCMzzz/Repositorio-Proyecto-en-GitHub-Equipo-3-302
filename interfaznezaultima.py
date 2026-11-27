@@ -1467,16 +1467,6 @@ def mostrar_login():
     entrada_clave = crear_campo(tarjeta, ancho=38, ocultar=True)
     entrada_clave.pack(fill="x", pady=(5, 14), ipady=6)
 
-    tk.Label(tarjeta, text="Tipo de acceso", font=(FUENTE_TEXTO, 12, "bold"),
-             fg=COLOR_TEXTO, bg=COLOR_PANEL).pack(anchor="w", pady=(2, 5))
-    perfil = tk.StringVar(value="Directivo")
-    fila_perfiles = tk.Frame(tarjeta, bg=COLOR_PANEL)
-    fila_perfiles.pack(anchor="w")
-    for rol in ("Directivo", "Profesor"):
-        tk.Radiobutton(fila_perfiles, text=rol, variable=perfil, value=rol,
-                       font=(FUENTE_TEXTO, 11), bg=COLOR_PANEL, fg=COLOR_TEXTO,
-                       activebackground=COLOR_PANEL).pack(side="left", padx=(0, 20))
-
     def revisar_acceso():
         usuario = entrada_usuario.get().strip()
         clave = entrada_clave.get()
@@ -1490,13 +1480,11 @@ def mostrar_login():
         if not usuario_bd or not comprobar_clave(clave, usuario_bd[0]["contrasena"]):
             messagebox.showerror("Acceso denegado", "El usuario o la contraseña son incorrectos.")
             return
-        if usuario_bd[0]["rol"].lower() != perfil.get().lower():
-            messagebox.showwarning("Tipo de acceso", "El usuario no tiene permisos para ese perfil.")
-            return
+        rol_usuario = usuario_bd[0]["rol"]
         if not usuario_bd[0]["contrasena"].startswith("pbkdf2$"):
             ejecutar_sql("UPDATE usuarios SET contrasena=%s WHERE id_usuario=%s",
                          (crear_hash(clave), usuario_bd[0]["id_usuario"]))
-        if perfil.get() == "Directivo":
+        if rol_usuario.lower() == "directivo":
             mostrar_director()
         else:
             mostrar_profesor()
