@@ -856,6 +856,13 @@ def mostrar_director():
         exportar_reporte
     ).pack(side="left", padx=4)
 
+    crear_boton(
+        fila_botones,
+        "Crear cuenta nueva",
+        lambda: mostrar_registro(volver_a=mostrar_director),
+        COLOR_VERDE
+    ).pack(side="left", padx=4)
+
     fila_fecha = tk.Frame(ventana, bg=COLOR_FONDO)
     fila_fecha.pack(fill="x", padx=14, pady=5)
 
@@ -1360,7 +1367,7 @@ def vista_conducta_profesor():
     if not hay:
         lista.insert("end", "No hay reportes de conducta en este grupo.")
 
-def mostrar_registro():
+def mostrar_registro(volver_a=mostrar_login):
     """Permite registrar una cuenta de directivo o profesor."""
     limpiar_ventana()
     contenedor = crear_contenedor_con_scroll(ventana)
@@ -1431,11 +1438,12 @@ def mostrar_registro():
         else:
             ejecutar_sql("INSERT INTO docentes (id_usuario, nombre, apellido, id_grupo) VALUES (%s,%s,%s,NULL)",
                          (id_usuario, nombre, apellido))
-        messagebox.showinfo("Cuenta creada", "Tu cuenta se creó correctamente. Ya puedes iniciar sesión.")
-        mostrar_login()
+        messagebox.showinfo("Cuenta creada", "Tu cuenta se creó correctamente.")
+        volver_a()
 
+    texto_volver = "Volver al panel" if volver_a == mostrar_director else "Volver al inicio de sesión"
     crear_boton(tarjeta, "Crear cuenta", guardar_cuenta, COLOR_VERDE).pack(fill="x", pady=(20, 7), ipady=5)
-    crear_boton(tarjeta, "Volver al inicio de sesión", mostrar_login, COLOR_AZUL_OSCURO).pack(fill="x", ipady=5)
+    crear_boton(tarjeta, texto_volver, volver_a, COLOR_AZUL_OSCURO).pack(fill="x", ipady=5)
 
 
 def mostrar_login():
@@ -1490,7 +1498,6 @@ def mostrar_login():
             mostrar_profesor()
 
     crear_boton(tarjeta, "Ingresar", revisar_acceso, COLOR_AZUL_OSCURO).pack(fill="x", pady=(18, 8), ipady=7)
-    crear_boton(tarjeta, "Crear cuenta nueva", mostrar_registro, COLOR_VERDE).pack(fill="x", ipady=7)
 
 
 if __name__ == "__main__":
