@@ -1367,7 +1367,7 @@ def vista_conducta_profesor():
     if not hay:
         lista.insert("end", "No hay reportes de conducta en este grupo.")
 
-def mostrar_registro(volver_a=mostrar_login):
+def mostrar_registro(volver_a=None):
     """Permite registrar una cuenta de directivo o profesor."""
     limpiar_ventana()
     contenedor = crear_contenedor_con_scroll(ventana)
